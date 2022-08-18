@@ -1,0 +1,18 @@
+{
+  "name": "discord",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js",
+    "deploy-commands": "node src/commands-register",
+    "delete-commands": "node src/commands-delete"
+  },
+  "author": "",
+  "dependencies": {
+    "@discordjs/rest": "^1.0.1",
+    "discord.js": "^14.2.0",
+    "dotenv": "^16.0.1"
+  }
+}

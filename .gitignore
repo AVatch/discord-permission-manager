@@ -2,6 +2,7 @@
 # http://git-scm.com/docs/gitignore
 
 secrets.ts
+.env
 
 *~
 *.sw[mnpcod]
