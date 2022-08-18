@@ -11,8 +11,4 @@ export const emulators = {
     host: 'localhost',
     port: 8080,
   },
-  storage: {
-    host: 'localhost',
-    port: 9199,
-  },
 };
