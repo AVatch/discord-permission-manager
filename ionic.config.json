@@ -1,0 +1,7 @@
+{
+  "name": "discord-permission-manager",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
