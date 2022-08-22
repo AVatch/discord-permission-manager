@@ -1,6 +1,7 @@
 const {
   SlashCommandBuilder,
   ActionRowBuilder,
+  EmbedBuilder,
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
@@ -19,6 +20,15 @@ module.exports = {
         .setStyle(ButtonStyle.Primary)
     );
 
-    await interaction.reply({ content: "Pong!", components: [row] });
+    const embed = new EmbedBuilder()
+      .setColor(0x0099ff)
+      .setTitle("Some title")
+      .setURL("https://discord.js.org")
+      .setDescription("Some description here");
+
+    await interaction.reply({
+      embeds: [embed],
+      components: [row],
+    });
   },
 };

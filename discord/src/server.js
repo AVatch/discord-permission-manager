@@ -52,6 +52,18 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isButton()) return;
+
+  console.log("button!!");
+  console.log(interaction);
+
+  await interaction.reply({
+    content: "Custom stuff here",
+    ephemeral: true,
+    components: [],
+  });
+});
 /**
  *
  * Login bot
