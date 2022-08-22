@@ -2,7 +2,14 @@ require("dotenv").config();
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client, Collection, GatewayIntentBits } = require("discord.js");
+const {
+  Client,
+  Collection,
+  GatewayIntentBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -30,10 +37,9 @@ for (const file of commandFiles) {
  *
  */
 
-client.once("ready", () => {
-  console.log("Ready!");
-});
+client.once("ready", () => console.log("Discord Bot Ready!"));
 
+// Handle slash commands
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -52,16 +58,30 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+// Handle button commands
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
 
-  console.log("button!!");
-  console.log(interaction);
+  if (interaction.customId !== "sync-permissions") return;
+
+  // TODO: Create session token
+  const guildId = interaction.guildId;
+  const userId = interaction.userId;
+
+  const tokenId = `12345`;
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setURL(`http://localhost:8100/verify?token=${tokenId}`)
+      .setLabel("Verify Email")
+      .setStyle(ButtonStyle.Link)
+  );
 
   await interaction.reply({
-    content: "Custom stuff here",
+    content:
+      "Please use the following link to verify your membership email. Note, this link will be only be valid for the next 5 minutes.",
     ephemeral: true,
-    components: [],
+    components: [row],
   });
 });
 /**
