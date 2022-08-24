@@ -86,6 +86,8 @@ export class HomePage implements OnInit {
   async submitEmailForm() {
     if (this.emailFormDisabled) return;
 
+    this.emailFormLoading = true;
+
     const functions = getFunctions();
     const callable = httpsCallable(functions, 'dispatchEmailVerificationFn');
 
@@ -107,10 +109,14 @@ export class HomePage implements OnInit {
 
       this.state = 'failure';
     }
+
+    this.emailFormLoading = false;
   }
 
   async submitCodeForm() {
     if (this.codeFormDisabled) return;
+
+    this.codeFormLoading = true;
 
     const functions = getFunctions();
     const callable = httpsCallable(functions, 'verifyEmailCodeFn');
@@ -133,7 +139,17 @@ export class HomePage implements OnInit {
 
       this.state = 'failure';
     }
+
+    this.codeFormLoading = false;
   }
 
-  reset() {}
+  reset() {
+    this.emailForm.reset({ email: null });
+    this.codeForm.reset({ code: null });
+
+    this.emailFormLoading = false;
+    this.codeFormLoading = false;
+
+    this.state = 'email';
+  }
 }
