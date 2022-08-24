@@ -102,7 +102,10 @@ export const dispatchEmailOnCodeCreate = functions.firestore
     if (!email || !code) return;
 
     const msg = {
-      from: 'do_not_reply@eatworks.xyz',
+      from: {
+        name: 'eatworks',
+        email: 'do_not_reply@eatworks.xyz',
+      },
       templateId: 'd-56cc369bcf0a447dad8fb876ec6234dc',
       personalizations: [
         {
@@ -117,8 +120,6 @@ export const dispatchEmailOnCodeCreate = functions.firestore
         },
       ],
     };
-
-    functions.logger.info(msg);
 
     try {
       await sgMail.send(msg);
