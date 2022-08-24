@@ -2,6 +2,12 @@ require("dotenv").config();
 
 const fs = require("node:fs");
 const path = require("node:path");
+
+const { initializeApp } = require("firebase-admin/app");
+const admin = require("firebase-admin");
+
+const serviceAccount = require("../service-account-key.json");
+
 const {
   Client,
   Collection,
@@ -10,6 +16,10 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
+
+initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -62,17 +72,26 @@ client.on("interactionCreate", async (interaction) => {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
 
-  if (interaction.customId !== "sync-permissions") return;
+  console.log("hello there", interaction.customId);
 
-  // TODO: Create session token
+  if (interaction.customId !== "verify-roles") return;
+
   const guildId = interaction.guildId;
-  const userId = interaction.userId;
+  const userId = interaction.user.id;
 
-  const tokenId = `12345`;
+  console.log({ guildId, userId });
+
+  const ref = await admin.firestore().collection("/sessions").add({
+    guildId,
+    userId,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const sessionId = ref.id;
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setURL(`http://localhost:8100/verify?token=${tokenId}`)
+      .setURL(`${process.env.APP_HOSTNAME}/verify?sid=${sessionId}`)
       .setLabel("Verify Email")
       .setStyle(ButtonStyle.Link)
   );

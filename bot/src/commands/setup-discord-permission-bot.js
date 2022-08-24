@@ -15,7 +15,7 @@ module.exports = {
   async execute(interaction) {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("sync-permissions")
+        .setCustomId("verify-roles")
         .setLabel("Let's go!")
         .setStyle(ButtonStyle.Secondary)
     );

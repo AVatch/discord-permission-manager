@@ -1,4 +1,5 @@
 .env
+service-account-key.json
 
 # Compiled JavaScript files
 lib/**/*.js
@@ -9,3 +10,5 @@ typings/
 
 # Node.js dependency directory
 node_modules/
+
+

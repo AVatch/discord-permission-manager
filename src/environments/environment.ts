@@ -8,7 +8,7 @@ import { version } from './version';
 
 export const environment = {
   production: false,
-  useEmulators: true,
+  useEmulators: false,
   emulators,
   secrets,
   version,
