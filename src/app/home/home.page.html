@@ -1,4 +1,4 @@
-<ion-header [translucent]="true">
+<ion-header [translucent]="true" class="ion-no-border">
   <ion-toolbar>
     <ion-title> Discord Permissions </ion-title>
   </ion-toolbar>
@@ -50,24 +50,36 @@
       </ng-container>
       <ng-container *ngSwitchCase="'code'">
         <form [formGroup]="codeForm" (ngSubmit)="submitCodeForm()">
-          <ion-list>
-            <ion-item>
+          <ion-card color="light">
+            <ion-card-header>
+              <ion-card-title>Code sent</ion-card-title>
+            </ion-card-header>
+            <ion-card-content>
+              <p>
+                We sent you an email with a short verification code. Please
+                enter it below. Don't forget to check your spam/junk folder just
+                in case.
+              </p>
+            </ion-card-content>
+            <ion-item color="light">
+              <ion-label position="stacked">Code</ion-label>
               <ion-input
                 formControlName="code"
-                placeholder="e.g. 12345"
+                placeholder="e.g. 123456"
               ></ion-input>
-              <ion-button
-                slot="end"
-                type="submit"
-                fill="clear"
-                [disabled]="emailFormDisabled"
-              >
-                <ng-container *ngIf="!codeFormLoading; else buttonLoader">
-                  <ion-label>Verify</ion-label>
-                </ng-container>
-              </ion-button>
             </ion-item>
-          </ion-list>
+
+            <ion-button
+              class="ion-float-end ion-margin"
+              type="submit"
+              fill="solid"
+              [disabled]="codeFormDisabled"
+            >
+              <ng-container *ngIf="!codeFormLoading; else buttonLoader">
+                <ion-label>Verify</ion-label>
+              </ng-container>
+            </ion-button>
+          </ion-card>
         </form>
       </ng-container>
       <ng-container *ngSwitchCase="'success'">

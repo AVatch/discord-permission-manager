@@ -1,6 +1,13 @@
 :host {
   ion-card {
-    --border-radius: 12px;
+    border-radius: 12px;
     box-shadow: none;
+
+    max-width: 450px;
+    margin: 32px auto;
+
+    ion-button {
+      --box-shadow: none;
+    }
   }
 }

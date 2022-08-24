@@ -31,7 +31,7 @@ export class HomePage implements OnInit {
   }
 
   // http://localhost:8100/verify?sid=nMsOyKkd3mV8DTlQT9rz
-  state: 'email' | 'code' | 'success' | 'failure' = 'email';
+  state: 'email' | 'code' | 'success' | 'failure' = 'code';
 
   emailFormLoading = false;
   emailForm = new FormGroup({
