@@ -3,7 +3,7 @@ import * as functions from 'firebase-functions';
 
 import * as sgMail from '@sendgrid/mail';
 
-const axios = require('axios').default;
+import axios from 'axios';
 
 admin.initializeApp();
 
