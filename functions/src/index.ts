@@ -3,6 +3,8 @@ import * as functions from 'firebase-functions';
 
 import * as sgMail from '@sendgrid/mail';
 
+const axios = require('axios').default;
+
 admin.initializeApp();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
@@ -68,12 +70,32 @@ export const verifyEmailCodeFn = functions.https.onCall(
     const codeDocData = querySnapshot.docs.map((doc) => doc.data())[0];
 
     //
+    // Get the session
+
+    const sessionRef = admin.firestore().collection('/sessions').doc(sid);
+    const sessionSnapshot = await sessionRef.get();
+
+    if (!sessionSnapshot.exists)
+      return { ok: false, reason: 'Sorry, this code is wrong' };
+
+    const sessionDocData = sessionSnapshot.data();
+
+    const serverId = sessionDocData!.serverId;
+    const userId = sessionDocData!.userId;
+
+    //
     // Verify that the email is on the allowlist
 
     const email = codeDocData.email;
 
     const validEmail = (
-      await admin.firestore().collection('/emails').doc(email).get()
+      await admin
+        .firestore()
+        .collection('/servers')
+        .doc(serverId)
+        .collection('/allowlist')
+        .doc(email)
+        .get()
     ).exists;
 
     if (!validEmail)
@@ -82,15 +104,49 @@ export const verifyEmailCodeFn = functions.https.onCall(
     //
     // Update this discord user's role
 
-    try {
-      // TODO
-      return { ok: true };
-    } catch (err) {
-      functions.logger.error(err);
-      return { ok: false, reason: 'Sorry, something went wrong' };
-    }
+    await admin.firestore().collection('/verify').add({
+      serverId,
+      userId,
+      sessionId: sid,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { ok: true };
   }
 );
+
+export const modifyUserRoleOnConfirmCreate = functions.firestore
+  .document('/verify/{verifyId}')
+  .onCreate(async (change, context) => {
+    // https://discord.com/developers/docs/resources/guild#add-guild-member-role
+    // PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}
+
+    const data = change.data();
+    const { serverId, userId } = data;
+
+    const roleIds: string[] =
+      (
+        await admin.firestore().collection('/servers').doc(serverId).get()
+      ).data()?.roles ?? [];
+
+    await Promise.all(
+      roleIds.map(async (roleId) => {
+        try {
+          await axios.put(
+            `https://discord.com/api/v10/guilds/${serverId}/members/${userId}/roles/${roleId}`,
+            {},
+            {
+              headers: {
+                Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+              },
+            }
+          );
+        } catch (err) {
+          functions.logger.error(err);
+        }
+      })
+    );
+  });
 
 export const dispatchEmailOnCodeCreate = functions.firestore
   .document('/codes/{codeId}')
