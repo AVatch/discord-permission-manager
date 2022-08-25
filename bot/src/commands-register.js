@@ -1,14 +1,25 @@
 require("dotenv").config();
 
+const admin = require("firebase-admin");
+const { initializeApp } = require("firebase-admin/app");
+const serviceAccount = require("../service-account-key.json");
+
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord.js");
 
 const fs = require("node:fs");
 const path = require("node:path");
 
+initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 const clientId = process.env.DISCORD_CLIENT_ID;
-const guildId = process.env.DISCORD_GUILD_ID;
 const token = process.env.DISCORD_BOT_TOKEN;
+
+const guildIds = (
+  await admin.firestore().collection("/servers").get()
+).docs.map((doc) => doc.id);
 
 const commands = [];
 const commandsPath = path.join(__dirname, "commands");
@@ -24,7 +35,17 @@ for (const file of commandFiles) {
 
 const rest = new REST({ version: "10" }).setToken(token);
 
-rest
-  .put(Routes.applicationGuildCommands(clientId, guildId), { body: commands })
-  .then(() => console.log("Successfully registered application commands."))
-  .catch(console.error);
+await Promise.all(
+  guildIds.map(async (guildId) => {
+    try {
+      await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+        body: commands,
+      });
+      console.log(
+        `Successfully registered application commands for ${guildId}.`
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  })
+);

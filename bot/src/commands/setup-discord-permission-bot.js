@@ -1,3 +1,5 @@
+const admin = require("firebase-admin");
+
 const {
   SlashCommandBuilder,
   ActionRowBuilder,
@@ -13,6 +15,16 @@ module.exports = {
       "Sets up the permission bot to handle the permission handshake."
     ),
   async execute(interaction) {
+    console.log(interaction);
+
+    const guildId = interaction.guildId;
+    const channelId = interaction.channelId;
+
+    await admin.firestore().collection("/servers").doc(guildId).set({
+      roles: [],
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("verify-roles")

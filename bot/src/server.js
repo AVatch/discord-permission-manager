@@ -79,10 +79,8 @@ client.on("interactionCreate", async (interaction) => {
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
 
-  console.log({ guildId, userId });
-
   const ref = await admin.firestore().collection("/sessions").add({
-    guildId,
+    serverId: guildId,
     userId,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   });
