@@ -3,8 +3,6 @@ require("dotenv").config();
 const fs = require("node:fs");
 const path = require("node:path");
 
-import * as sgMail from "@sendgrid/mail";
-
 const { subMinutes } = require("date-fns");
 
 const { initializeApp } = require("firebase-admin/app");
@@ -27,9 +25,6 @@ const {
 
 // initialize firebase
 initializeApp({ credential: admin.credential.cert(serviceAccount) });
-
-// initialize sendgrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // initializer discord.js
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
