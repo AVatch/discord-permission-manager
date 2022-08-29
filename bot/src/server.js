@@ -12,7 +12,11 @@ const {
   Client,
   Collection,
   GatewayIntentBits,
+  InteractionType,
+  ModalBuilder,
   ActionRowBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
@@ -47,9 +51,12 @@ for (const file of commandFiles) {
  *
  */
 
-client.once("ready", () => console.log("Discord Bot Ready!"));
+client.once("ready", () => console.log("✅ Discord Bot Ready!"));
 
+//
+//
 // Handle slash commands
+//
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -68,37 +75,142 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+//
+//
 // Handle button commands
+//
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
 
-  if (interaction.customId !== "verify-roles") return;
+  const interactionCustomId = interaction.customId;
+  console.log("BUTTON TRIGGER", { interactionCustomId });
 
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
 
-  const ref = await admin.firestore().collection("/sessions").add({
-    serverId: guildId,
-    userId,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  switch (interactionCustomId) {
+    case "verify-roles": {
+      await admin.firestore().collection("/sessions").add({
+        serverId: guildId,
+        userId,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
-  const sessionId = ref.id;
+      const modal = new ModalBuilder()
+        .setCustomId("email-form")
+        .setTitle("Verify email");
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setURL(`${process.env.APP_HOSTNAME}/verify?sid=${sessionId}`)
-      .setLabel("Verify Email")
-      .setStyle(ButtonStyle.Link)
-  );
+      const emailInput = new TextInputBuilder()
+        .setCustomId("emailInput")
+        .setLabel("What's your membership email?")
+        .setPlaceholder("someone@awesome.com")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
 
-  await interaction.reply({
-    content:
-      "Please use the following link to verify your membership email. Note, this link will be only be valid for the next 5 minutes.",
-    ephemeral: true,
-    components: [row],
-  });
+      const actionRow = new ActionRowBuilder().addComponents(emailInput);
+
+      modal.addComponents(actionRow);
+
+      await interaction.showModal(modal);
+
+      break;
+    }
+
+    case "verify-email": {
+      const modal = new ModalBuilder()
+        .setCustomId("code-form")
+        .setTitle("Verify email");
+
+      const codeInput = new TextInputBuilder()
+        .setCustomId("codeInput")
+        .setLabel("Enter the code we just sent you,")
+        .setPlaceholder("e.g. 123456")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const actionRow = new ActionRowBuilder().addComponents(codeInput);
+
+      modal.addComponents(actionRow);
+
+      await interaction.showModal(modal);
+
+      break;
+    }
+
+    default: {
+      await interaction.reply({
+        content: `Sorry, something went wrong.`,
+        ephemeral: true,
+      });
+      break;
+    }
+  }
 });
+
+//
+//
+// Handle modal form submissions
+//
+client.on("interactionCreate", async (interaction) => {
+  if (interaction.type !== InteractionType.ModalSubmit) return;
+
+  const interactionCustomId = interaction.customId;
+  console.log("MODAL SUBMISION", { interactionCustomId });
+
+  switch (interactionCustomId) {
+    case "email-form": {
+      const email = interaction.fields.getTextInputValue("emailInput");
+
+      if (email) {
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId("verify-email")
+            .setLabel("Code Received")
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({
+          content: `We sent a short code to ${email} to verify you have access to it. Please enter it below once you have recieved it and don't forget to check your spam/junk folders.`,
+          ephemeral: true,
+          components: [row],
+        });
+      } else {
+      }
+
+      break;
+    }
+
+    case "code-form": {
+      const code = interaction.fields.getTextInputValue("codeInput");
+
+      // TODO:
+      const verified = false;
+
+      if (verified) {
+        await interaction.reply({
+          content: `🥳 Congratulations and welcome to the discord! Your email is verified.`,
+          ephemeral: true,
+        });
+      } else {
+        await interaction.reply({
+          content: `Sorry, it seems like the email you entered is not associated with a membership. Head on over to #tech-help and let us know.`,
+          ephemeral: true,
+        });
+      }
+
+      break;
+    }
+
+    default: {
+      await interaction.reply({
+        content: `Sorry, something went wrong.`,
+        ephemeral: true,
+      });
+      break;
+    }
+  }
+});
+
 /**
  *
  * Login bot
