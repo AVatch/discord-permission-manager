@@ -5,6 +5,8 @@ const path = require("node:path");
 
 import * as sgMail from "@sendgrid/mail";
 
+const { subMinutes } = require("date-fns");
+
 const { initializeApp } = require("firebase-admin/app");
 const admin = require("firebase-admin");
 
@@ -193,7 +195,10 @@ client.on("interactionCreate", async (interaction) => {
     case "code-form": {
       const code = interaction.fields.getTextInputValue("codeInput");
 
-      const fiveMinsAgo = new Date();
+      const now = new Date();
+      const timeWindow = admin.firestore.Timestamp.fromDate(
+        subMinutes(now, process.env.VERIFICATION_TIME_WINDOW)
+      );
 
       const verificationQuery = admin
         .firestore()
@@ -201,7 +206,7 @@ client.on("interactionCreate", async (interaction) => {
         .where("guildId", "==", guildId)
         .where("userId", "==", userId)
         .where("code", "==", code)
-        .where("timestamp", ">=", fiveMinsAgo)
+        .where("timestamp", ">=", timeWindow)
         .limit(1);
 
       const verificationSnapshot = await verificationQuery.get();

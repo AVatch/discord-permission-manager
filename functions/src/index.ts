@@ -9,181 +9,90 @@ admin.initializeApp();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
-// export const dispatchEmailVerificationFn = functions.https.onCall(
-//   async (
-//     data: {
-//       sid: string;
-//       email: string;
-//     },
-//     context
-//   ) => {
-//     const { sid, email } = data;
+export const dispatchEmailOnVerificationCreate = functions.firestore
+  .document('/verifications/{verificationId}')
+  .onCreate(async (change, context) => {
+    const data = change.data();
+    const { email, code } = data;
 
-//     const sessionRef = admin.firestore().collection('/sessions').doc(sid);
-//     const sessionSnapshot = await sessionRef.get();
+    if (!email || !code) return;
 
-//     // TODO: Add a time condition to make sure it was generated recently
+    const msg = {
+      from: {
+        name: 'eatworks',
+        email: 'do_not_reply@eatworks.xyz',
+      },
+      templateId: process.env.SENDGRID_TEMPLATE_ID!,
+      personalizations: [
+        {
+          to: [
+            {
+              email,
+            },
+          ],
+          dynamic_template_data: {
+            code,
+          },
+        },
+      ],
+    };
 
-//     if (!sessionSnapshot.exists)
-//       return { ok: false, reason: 'Session has expired' };
+    try {
+      await sgMail.send(msg);
+      await change.ref.update({ didDispatch: true });
+    } catch (error: any) {
+      functions.logger.error(error);
+      if (error.response) functions.logger.error(error.response.body);
 
-//     const code = Math.random().toString().slice(2, 8);
+      await change.ref.update({ didDispatch: false });
+    }
+  });
 
-//     await admin.firestore().collection('/codes').add({
-//       sessionId: sid,
-//       method: 'email',
-//       code,
-//       email,
-//     });
+export const updateDiscordRoleOnVerificationUpdate = functions.firestore
+  .document('/verifications/{verificationId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
 
-//     return { ok: true };
-//   }
-// );
+    const shouldRun =
+      after.isVerified &&
+      !before.isVerified &&
+      after.isVerified !== before.isVerified;
+    if (!shouldRun) return;
 
-// export const verifyEmailCodeFn = functions.https.onCall(
-//   async (
-//     data: {
-//       sid: string;
-//       code: string;
-//     },
-//     context
-//   ) => {
-//     const { sid, code } = data;
+    // Get the roles to assign this email
 
-//     //
-//     // Lookup the code to ensure it is valid
+    const { guildId, userId, email } = after;
 
-//     // TODO: Add a time condition to make sure it was sent recently
+    const roleIds =
+      (
+        await admin
+          .firestore()
+          .collection('/allowlists')
+          .doc(guildId)
+          .collection('emails')
+          .doc(email)
+          .get()
+      ).data()?.roles ?? [];
 
-//     const queryRef = admin
-//       .firestore()
-//       .collection('/codes')
-//       .where('sessionId', '==', sid)
-//       .where('code', '==', code)
-//       .limit(1);
+    // https://discord.com/developers/docs/resources/guild#add-guild-member-role
+    // PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}
 
-//     const querySnapshot = await queryRef.get();
-
-//     if (querySnapshot.empty)
-//       return { ok: false, reason: 'Sorry, this code is wrong' };
-
-//     const codeDocData = querySnapshot.docs.map((doc) => doc.data())[0];
-
-//     //
-//     // Get the session
-
-//     const sessionRef = admin.firestore().collection('/sessions').doc(sid);
-//     const sessionSnapshot = await sessionRef.get();
-
-//     if (!sessionSnapshot.exists)
-//       return { ok: false, reason: 'Sorry, this code is wrong' };
-
-//     const sessionDocData = sessionSnapshot.data();
-
-//     const serverId = sessionDocData!.serverId;
-//     const userId = sessionDocData!.userId;
-
-//     //
-//     // Verify that the email is on the allowlist
-
-//     const email = codeDocData.email;
-
-//     const validEmail = (
-//       await admin
-//         .firestore()
-//         .collection('/servers')
-//         .doc(serverId)
-//         .collection('/allowlist')
-//         .doc(email)
-//         .get()
-//     ).exists;
-
-//     if (!validEmail)
-//       return { ok: false, reason: 'Sorry, this email is not valid.' };
-
-//     //
-//     // Update this discord user's role
-
-//     await admin.firestore().collection('/verify').add({
-//       serverId,
-//       userId,
-//       sessionId: sid,
-//       timestamp: admin.firestore.FieldValue.serverTimestamp(),
-//     });
-
-//     return { ok: true };
-//   }
-// );
-
-// export const modifyUserRoleOnConfirmCreate = functions.firestore
-//   .document('/verify/{verifyId}')
-//   .onCreate(async (change, context) => {
-//     // https://discord.com/developers/docs/resources/guild#add-guild-member-role
-//     // PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}
-
-//     const data = change.data();
-//     const { serverId, userId } = data;
-
-//     const roleIds: string[] =
-//       (
-//         await admin.firestore().collection('/servers').doc(serverId).get()
-//       ).data()?.roles ?? [];
-
-//     await Promise.all(
-//       roleIds.map(async (roleId) => {
-//         try {
-//           await axios.put(
-//             `https://discord.com/api/v10/guilds/${serverId}/members/${userId}/roles/${roleId}`,
-//             {},
-//             {
-//               headers: {
-//                 Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
-//               },
-//             }
-//           );
-//         } catch (err) {
-//           functions.logger.error(err);
-//         }
-//       })
-//     );
-//   });
-
-// export const dispatchEmailOnCodeCreate = functions.firestore
-//   .document('/codes/{codeId}')
-//   .onCreate(async (change, context) => {
-//     const data = change.data();
-
-//     const { email, code } = data;
-
-//     if (!email || !code) return;
-
-//     const msg = {
-//       from: {
-//         name: 'eatworks',
-//         email: 'do_not_reply@eatworks.xyz',
-//       },
-//       templateId: 'd-56cc369bcf0a447dad8fb876ec6234dc',
-//       personalizations: [
-//         {
-//           to: [
-//             {
-//               email,
-//             },
-//           ],
-//           dynamic_template_data: {
-//             code,
-//           },
-//         },
-//       ],
-//     };
-
-//     try {
-//       await sgMail.send(msg);
-//     } catch (error: any) {
-//       functions.logger.error(error);
-
-//       if (error.response) {
-//         functions.logger.error(error.response.body);
-//       }
-//     }
-//   });
+    await Promise.all(
+      roleIds.map(async (roleId: string) => {
+        try {
+          await axios.put(
+            `https://discord.com/api/v10/guilds/${guildId}/members/${userId}/roles/${roleId}`,
+            {},
+            {
+              headers: {
+                Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+              },
+            }
+          );
+        } catch (err) {
+          functions.logger.error(err);
+        }
+      })
+    );
+  });
