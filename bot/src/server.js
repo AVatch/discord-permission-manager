@@ -3,6 +3,8 @@ require("dotenv").config();
 const fs = require("node:fs");
 const path = require("node:path");
 
+import * as sgMail from "@sendgrid/mail";
+
 const { initializeApp } = require("firebase-admin/app");
 const admin = require("firebase-admin");
 
@@ -21,10 +23,13 @@ const {
   ButtonStyle,
 } = require("discord.js");
 
-initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+// initialize firebase
+initializeApp({ credential: admin.credential.cert(serviceAccount) });
 
+// initialize sendgrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// initializer discord.js
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 /**
@@ -83,19 +88,9 @@ client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
 
   const interactionCustomId = interaction.customId;
-  console.log("BUTTON TRIGGER", { interactionCustomId });
-
-  const guildId = interaction.guildId;
-  const userId = interaction.user.id;
 
   switch (interactionCustomId) {
     case "verify-roles": {
-      await admin.firestore().collection("/sessions").add({
-        serverId: guildId,
-        userId,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
       const modal = new ModalBuilder()
         .setCustomId("email-form")
         .setTitle("Verify email");
@@ -155,13 +150,28 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.type !== InteractionType.ModalSubmit) return;
 
   const interactionCustomId = interaction.customId;
-  console.log("MODAL SUBMISION", { interactionCustomId });
+
+  const guildId = interaction.guildId;
+  const userId = interaction.user.id;
 
   switch (interactionCustomId) {
     case "email-form": {
+      const userId = interaction.user.id;
       const email = interaction.fields.getTextInputValue("emailInput");
 
       if (email) {
+        const code = Math.random().toString().slice(2, 8);
+
+        // will trigger api call that sends email via sendgrid
+        await admin.firestore().collection("/verifications").add({
+          guildId,
+          userId,
+          email,
+          code,
+          isVerified: false,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId("verify-email")
@@ -183,17 +193,54 @@ client.on("interactionCreate", async (interaction) => {
     case "code-form": {
       const code = interaction.fields.getTextInputValue("codeInput");
 
-      // TODO:
-      const verified = false;
+      const fiveMinsAgo = new Date();
+
+      const verificationQuery = admin
+        .firestore()
+        .collection("/verifications")
+        .where("guildId", "==", guildId)
+        .where("userId", "==", userId)
+        .where("code", "==", code)
+        .where("timestamp", ">=", fiveMinsAgo)
+        .limit(1);
+
+      const verificationSnapshot = await verificationQuery.get();
+      const verified = !verificationSnapshot.empty;
 
       if (verified) {
-        await interaction.reply({
-          content: `🥳 Congratulations and welcome to the discord! Your email is verified.`,
-          ephemeral: true,
-        });
+        const verificationDocRef = verificationSnapshot.docs.at(0);
+        const verificationDocData = verificationDocRef.data();
+
+        const email = verificationDocData.email;
+
+        const allowlistRef = admin
+          .firestore()
+          .collection("/allowlists")
+          .doc(guildId)
+          .collection("emails")
+          .doc(email);
+
+        const allowlistSnapshot = await allowlistRef.get();
+
+        const isOnAllowlist = allowlistSnapshot.exists;
+
+        if (isOnAllowlist) {
+          // will trigger api call to update discord role
+          await verificationDocRef.ref.update({ isVerified: true });
+
+          await interaction.reply({
+            content: `🥳 Congratulations and welcome to the discord! Your email is verified and your roles will be updated shortly.`,
+            ephemeral: true,
+          });
+        } else {
+          await interaction.reply({
+            content: `Sorry, it seems like the email you entered is not associated with a membership. Head on over to #tech-help and let us know.`,
+            ephemeral: true,
+          });
+        }
       } else {
         await interaction.reply({
-          content: `Sorry, it seems like the email you entered is not associated with a membership. Head on over to #tech-help and let us know.`,
+          content: `Sorry, the code you entered is invalid or has already expired.`,
           ephemeral: true,
         });
       }
