@@ -156,6 +156,8 @@ client.on("interactionCreate", async (interaction) => {
       const userId = interaction.user.id;
       const email = interaction.fields.getTextInputValue("emailInput");
 
+      console.log("email-form", { userId, email });
+
       if (email) {
         const code = Math.random().toString().slice(2, 8);
 
@@ -182,6 +184,7 @@ client.on("interactionCreate", async (interaction) => {
           components: [row],
         });
       } else {
+        console.log("No email provided");
       }
 
       break;

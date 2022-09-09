@@ -3,6 +3,7 @@
 
 secrets.ts
 .env
+data.ts
 
 *~
 *.sw[mnpcod]
