@@ -211,21 +211,68 @@ client.on("interactionCreate", async (interaction) => {
       const verified = !verificationSnapshot.empty;
 
       if (verified) {
+        let emailIsOnAirtableAllowlist = false;
+        let emailIsOnInternalAllowlist = false;
+
         const verificationDocRef = verificationSnapshot.docs.at(0);
         const verificationDocData = verificationDocRef.data();
 
         const email = verificationDocData.email;
 
-        const allowlistRef = admin
+        const airtableRef = admin
           .firestore()
           .collection("/allowlists")
           .doc(guildId)
-          .collection("emails")
-          .doc(email);
+          .collection("integrations")
+          .doc("airtable");
 
-        const allowlistSnapshot = await allowlistRef.get();
+        const airtableSnapshot = await airtableRef.get();
+        const hasAirtableIntegration = airtableSnapshot.exists;
 
-        const isOnAllowlist = allowlistSnapshot.exists;
+        if (hasAirtableIntegration) {
+          const airtableData = airtableSnapshot.data();
+
+          if (airtableData) {
+            try {
+              const response = await axios.get(
+                `https://api.airtable.com/v0/${airtableData.base}/${airtableData.table}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${airtableData.key}`,
+                  },
+                  params: {
+                    ["fields[]"]: airtableData.field,
+                    filterByFormula: `IF({${airtableData.field}} = "${email}", 1, 0)`,
+                    view: airtableData.view,
+                    maxRecords: 1,
+                    pageSize: 1,
+                  },
+                }
+              );
+
+              const responseData = response?.data;
+
+              emailIsOnAirtableAllowlist =
+                (responseData?.records ?? []).length > 0;
+            } catch (err) {
+              functions.logger.error(err);
+            }
+          }
+        } else {
+          const allowlistRef = admin
+            .firestore()
+            .collection("/allowlists")
+            .doc(guildId)
+            .collection("emails")
+            .doc(email);
+
+          const allowlistSnapshot = await allowlistRef.get();
+
+          emailIsOnInternalAllowlist = allowlistSnapshot.exists;
+        }
+
+        const isOnAllowlist =
+          emailIsOnAirtableAllowlist || emailIsOnInternalAllowlist;
 
         if (isOnAllowlist) {
           // will trigger api call to update discord role
