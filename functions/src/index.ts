@@ -62,18 +62,9 @@ export const updateDiscordRoleOnVerificationUpdate = functions.firestore
 
     // Get the roles to assign this email
 
-    const { guildId, userId, email } = after;
+    const { guildId, userId } = after;
 
-    const roleIds =
-      (
-        await admin
-          .firestore()
-          .collection('/allowlists')
-          .doc(guildId)
-          .collection('emails')
-          .doc(email)
-          .get()
-      ).data()?.roles ?? [];
+    const roleIds = ['1017164566804840478'];
 
     // https://discord.com/developers/docs/resources/guild#add-guild-member-role
     // PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}
