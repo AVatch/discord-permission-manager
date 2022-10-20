@@ -255,7 +255,7 @@ client.on("interactionCreate", async (interaction) => {
               emailIsOnAirtableAllowlist =
                 (responseData?.records ?? []).length > 0;
             } catch (err) {
-              functions.logger.error(err);
+              console.error(err);
             }
           }
         } else {
