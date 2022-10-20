@@ -27,7 +27,7 @@ const {
 initializeApp({ credential: admin.credential.cert(serviceAccount) });
 
 // initializer discord.js
-const app = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 /**
  *
@@ -35,7 +35,7 @@ const app = new Client({ intents: [GatewayIntentBits.Guilds] });
  *
  */
 
-app.commands = new Collection();
+client.commands = new Collection();
 const commandsPath = path.join(__dirname, "commands");
 const commandFiles = fs
   .readdirSync(commandsPath)
@@ -44,7 +44,7 @@ const commandFiles = fs
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
   const command = require(filePath);
-  app.commands.set(command.data.name, command);
+  client.commands.set(command.data.name, command);
 }
 
 /**
@@ -53,16 +53,16 @@ for (const file of commandFiles) {
  *
  */
 
-app.once("ready", () => console.log("✅ Discord Bot Ready!"));
+client.once("ready", () => console.log("✅ Discord Bot Ready!"));
 
 //
 //
 // Handle slash commands
 //
-app.on("interactionCreate", async (interaction) => {
+client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  const command = app.commands.get(interaction.commandName);
+  const command = client.commands.get(interaction.commandName);
 
   if (!command) return;
 
@@ -81,7 +81,7 @@ app.on("interactionCreate", async (interaction) => {
 //
 // Handle button commands
 //
-app.on("interactionCreate", async (interaction) => {
+client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
 
   const interactionCustomId = interaction.customId;
@@ -143,7 +143,7 @@ app.on("interactionCreate", async (interaction) => {
 //
 // Handle modal form submissions
 //
-app.on("interactionCreate", async (interaction) => {
+client.on("interactionCreate", async (interaction) => {
   if (interaction.type !== InteractionType.ModalSubmit) return;
 
   const interactionCustomId = interaction.customId;
@@ -314,6 +314,4 @@ app.on("interactionCreate", async (interaction) => {
  *
  */
 
-app.login(process.env.DISCORD_BOT_TOKEN);
-
-module.exports = app;
+client.login(process.env.DISCORD_BOT_TOKEN);
